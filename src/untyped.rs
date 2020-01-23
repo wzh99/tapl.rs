@@ -16,7 +16,7 @@ impl Term {
 /// Top level shift
 fn shift(d: i32, t: &Rc<Term>) -> Rc<Term> {
     // Recursive call to closure is forbidden in Rust, so the recursive function is 
-    // implemented separately, instead of nestedly.
+    // implemented separately, instead of nested.
     shift_walk(d, 0, t)
 }
 
@@ -55,7 +55,7 @@ pub fn eval(t: &Rc<Term>) -> Rc<Term> {
         Term::App(t1, t2) => {
             if let Term::Abs(t12) = t1.as_ref() { // t1 is a value
                 if t2.is_value() {
-                    eval(&subst_top(t2, t12)) 
+                    subst_top(t2, t12)
                 } else { 
                     eval(&rc(Term::App(t1.clone(), eval(t2))))
                 }
@@ -69,5 +69,22 @@ pub fn eval(t: &Rc<Term>) -> Rc<Term> {
 
 #[test]
 fn test() {
-
+    let input = // (lambda. 1 0 2) (lambda. 0)
+        rc(Term::App(
+            rc(Term::Abs(
+                rc(Term::App(
+                    rc(Term::App(
+                        rc(Term::Var(1)),
+                        rc(Term::Var(0))
+                    )),
+                    rc(Term::Var(2))
+                ))
+            )),
+            rc(Term::Abs(
+                rc(Term::Var(0))
+            ))
+        ));
+    println!("{:?}", input);
+    let result = eval(&input);
+    println!("{:?}", result); // expect: 0 (lambda. 0) 1
 }

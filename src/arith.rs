@@ -23,13 +23,12 @@ impl Term {
 
 pub fn eval(t: &Rc<Term>) -> Rc<Term> {
     match t.as_ref() {
-        Term::If(t1, t2, t3) => {
+        Term::If(t1, t2, t3) =>
             match t1.as_ref() {
                 Term::True => eval(t2),
                 Term::False => eval(t3),
                 _ => eval(&rc(Term::If(eval(t1), t2.clone(), t3.clone())))
             }
-        }
         Term::Succ(t1) => rc(Term::Succ(eval(t1))),
         Term::Pred(t1) => {
             let e_pred = || eval(&rc(Term::Pred(eval(t1))));
@@ -56,7 +55,7 @@ pub fn eval(t: &Rc<Term>) -> Rc<Term> {
 
 #[test]
 fn test() {
-    let input = 
+    let input = // if true then iszero pred pred succ 0 else false
         rc(Term::If(
             rc(Term::True),
             rc(Term::IsZero(
@@ -72,5 +71,5 @@ fn test() {
         ));
     println!("{:?}", input);
     let result = eval(&input);
-    println!("{:?}", result);
+    println!("{:?}", result); // expect true
 }
