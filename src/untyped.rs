@@ -31,7 +31,7 @@ fn map_var_walk(on_var: &dyn VarMap, t: &Rc<Term>, c: i32) -> Rc<Term> {
 }
 
 fn shift(d: i32, t: &Rc<Term>) -> Rc<Term> {
-    map_var(&Shift {d}, t)
+    map_var(&Shift{d}, t)
 }
 
 struct Shift {
@@ -71,19 +71,25 @@ impl VarMap for Subst {
 }
 
 pub fn eval(t: &Rc<Term>) -> Rc<Term> {
-    match t.as_ref() {
-        Term::App(t1, t2) => {
-            if let Term::Abs(t12) = t1.as_ref() { // t1 is a value
-                if t2.is_value() {
-                    subst_top(t2, t12)
-                } else { 
-                    eval(&rc(Term::App(t1.clone(), eval(t2))))
+    match eval_once(t).as_ref() {
+        Some(r) => eval(r),
+        None => t.clone()
+    }
+}
+
+fn eval_once(t: &Rc<Term>) -> Option<Rc<Term>> {
+    if let Term::App(t1, t2) = t.as_ref() {
+        match t1.as_ref() {
+            Term::Abs(t12) =>
+                match t2.as_ref() {
+                    Term::Abs(_) | Term::Var(_) => Some(subst_top(t2, t12)),
+                    Term::App(_, _) => Some(rc(Term::App(t1.clone(), eval_once(t2)?)))
                 }
-            } else { // t1 is not a value
-                eval(&rc(Term::App(eval(t1), t2.clone())))
-            }
+            Term::App(_, _) => Some(rc(Term::App(eval_once(t1)?, t2.clone()))),
+            Term::Var(_) => Some(rc(Term::App(t1.clone(), eval_once(t2)?)))
         }
-        _ => t.clone()
+    } else {
+        None
     }
 }
 
