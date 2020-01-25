@@ -7,12 +7,6 @@ pub enum Term {
     App(Rc<Term>, Rc<Term>) // application of lambda to value
 }
 
-impl Term {
-    fn is_value(&self) -> bool {
-        if let Term::Abs(_) = self { true } else { false }
-    }
-}
-
 trait VarMap {
     fn map_var(&self, t: &Rc<Term>, c: i32) -> Rc<Term>;
 }
@@ -82,8 +76,9 @@ fn eval_once(t: &Rc<Term>) -> Option<Rc<Term>> {
         match t1.as_ref() {
             Term::Abs(t12) =>
                 match t2.as_ref() {
-                    Term::Abs(_) | Term::Var(_) => Some(subst_top(t2, t12)),
-                    Term::App(_, _) => Some(rc(Term::App(t1.clone(), eval_once(t2)?)))
+                    Term::Abs(_) => Some(subst_top(t2, t12)),
+                    Term::App(_, _) => Some(rc(Term::App(t1.clone(), eval_once(t2)?))),
+                    Term::Var(_) => None
                 }
             Term::App(_, _) => Some(rc(Term::App(eval_once(t1)?, t2.clone()))),
             Term::Var(_) => Some(rc(Term::App(t1.clone(), eval_once(t2)?)))
@@ -95,7 +90,7 @@ fn eval_once(t: &Rc<Term>) -> Option<Rc<Term>> {
 
 #[test]
 fn test() {
-    let input = // (lambda. 1 0 2) (lambda. 0)
+    let input = // (lambda. 1 0 2) lambda. 0
         rc(Term::App(
             rc(Term::Abs(
                 rc(Term::App(
