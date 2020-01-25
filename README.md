@@ -8,6 +8,7 @@ This project contains implementation of languages introduced in [Types and Progr
 
 * [Chapter 4: Arithmetic Expressions](src/arith.rs)
 * [Chapter 7: Untyped Lambda Calculus](src/untyped.rs)
+* [Chapter 10: Simple Types](src/simplebool.rs)
 
 To be added...
 
