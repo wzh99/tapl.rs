@@ -31,22 +31,17 @@ pub fn eval(t: &Rc<Term>) -> Rc<Term> {
             }
         Term::Succ(t1) => rc(Term::Succ(eval(t1))),
         Term::Pred(t1) => {
-            let e_pred = || eval(&rc(Term::Pred(eval(t1))));
             match t1.as_ref() {
                 Term::Zero => rc(Term::Zero),
-                Term::Succ(nv1) => {
-                    if nv1.is_numeric() { nv1.clone() } else { e_pred() }
-                }
-                _ => e_pred()
+                Term::Succ(nv1) if nv1.is_numeric() => nv1.clone(),
+                _ => eval(&rc(Term::Pred(eval(t1))))
             }
         }
         Term::IsZero(t1) => {
-            let e_iszero = || eval(&rc(Term::IsZero(eval(t1))));
             match t1.as_ref() {
                 Term::Zero => rc(Term::True),
-                Term::Succ(nv1) => 
-                    if nv1.is_numeric() { rc(Term::False) } else { e_iszero() }
-                _ => e_iszero()
+                Term::Succ(nv1) if nv1.is_numeric() => rc(Term::False),
+                _ => eval(&rc(Term::IsZero(eval(t1))))
             }
         }
         _ => t.clone()

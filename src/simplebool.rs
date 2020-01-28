@@ -55,32 +55,29 @@ pub fn type_of(t: &Rc<Term>, ctx: &Vec<Type>) -> Type {
 
 #[test]
 fn test() {
-    // (if true then lambda. lambda. 1 else lambda. lambda. 0) true false
+    // (if true then lambda. lambda. 1 else lambda. lambda. 0) true
     let input =
         rc(Term::App(
-            rc(Term::App(
-                rc(Term::If(
-                    rc(Term::True),
+            rc(Term::If(
+                rc(Term::True),
+                rc(Term::Abs(
+                    Type::Bool,
                     rc(Term::Abs(
                         Type::Bool,
-                        rc(Term::Abs(
-                            Type::Bool,
-                            rc(Term::Var(1))
-                        ))
-                    )),
-                    rc(Term::Abs(
-                        Type::Bool,
-                        rc(Term::Abs(
-                            Type::Bool,
-                            rc(Term::Var(0))
-                        ))
+                        rc(Term::Var(1))
                     ))
                 )),
-                rc(Term::True)
+                rc(Term::Abs(
+                    Type::Bool,
+                    rc(Term::Abs(
+                        Type::Bool,
+                        rc(Term::Var(0))
+                    ))
+                ))
             )),
-            rc(Term::False)
+            rc(Term::True)
         ));
     println!("{:?}", input);
     let type_input = type_of(&input, &vec![]);
-    println!("{:?}", type_input) // expect: Bool
+    println!("{:?}", type_input) // expect: Bool -> Bool
 }
