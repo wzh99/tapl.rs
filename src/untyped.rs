@@ -2,20 +2,20 @@ pub use crate::util::*;
 
 #[derive(Debug)]
 pub enum Term {
-    Var(i32), // variable (represented by de Bruijn index)
+    Var(isize), // variable (represented by de Bruijn index)
     Abs(Rc<Term>), // lambda abstraction
     App(Rc<Term>, Rc<Term>) // application of lambda to value
 }
 
 trait VarMap {
-    fn map_var(&self, t: &Rc<Term>, c: i32) -> Rc<Term>;
+    fn map_var(&self, t: &Rc<Term>, c: isize) -> Rc<Term>;
 }
 
 fn map_var(on_var: &dyn VarMap, t: &Rc<Term>) -> Rc<Term> {
     map_var_walk(on_var, t, 0)
 }
 
-fn map_var_walk(on_var: &dyn VarMap, t: &Rc<Term>, c: i32) -> Rc<Term> {
+fn map_var_walk(on_var: &dyn VarMap, t: &Rc<Term>, c: isize) -> Rc<Term> {
     match t.as_ref() {
         Term::Var(_) => on_var.map_var(t, c),
         Term::Abs(t1) => rc(Term::Abs(map_var_walk(on_var, t1, c + 1))),
@@ -24,44 +24,36 @@ fn map_var_walk(on_var: &dyn VarMap, t: &Rc<Term>, c: i32) -> Rc<Term> {
     }
 }
 
-fn shift(d: i32, t: &Rc<Term>) -> Rc<Term> {
-    map_var(&Shift{d}, t)
-}
-
-struct Shift {
-    d: i32,
-}
-
-impl VarMap for Shift {
-    fn map_var(&self, t: &Rc<Term>, c: i32) -> Rc<Term> {
-        if let Term::Var(x) = t.as_ref() {
-            if *x >= c { rc(Term::Var(*x + self.d)) } else { t.clone() }
-        } else {
-            panic!()
+fn shift(d: isize, t: &Rc<Term>) -> Rc<Term> {
+    struct Shift { d: isize }
+    impl VarMap for Shift {
+        fn map_var(&self, t: &Rc<Term>, c: isize) -> Rc<Term> {
+            if let Term::Var(x) = t.as_ref() {
+                if *x >= c { rc(Term::Var(*x + self.d)) } else { t.clone() }
+            } else {
+                panic!()
+            }
         }
     }
+    map_var(&Shift{d}, t)
 }
 
 fn subst_top(s: &Rc<Term>, t: &Rc<Term>) -> Rc<Term> {
     shift(-1, &subst(0, &shift(1, s), t))
 }
 
-fn subst(j: i32, s: &Rc<Term>, t: &Rc<Term>) -> Rc<Term> {
-    map_var(&Subst{j, s: s.clone()}, t)
-}
-
-struct Subst {
-    j: i32, s: Rc<Term>
-}
-
-impl VarMap for Subst {
-    fn map_var(&self, t: &Rc<Term>, c: i32) -> Rc<Term> {
-        if let Term::Var(x) = t.as_ref() {
-            if *x == self.j + c { shift(c, &self.s) } else { t.clone() }
-        } else {
-            panic!()
+fn subst(j: isize, s: &Rc<Term>, t: &Rc<Term>) -> Rc<Term> {
+    struct Subst { j: isize, s: Rc<Term> }
+    impl VarMap for Subst {
+        fn map_var(&self, t: &Rc<Term>, c: isize) -> Rc<Term> {
+            if let Term::Var(x) = t.as_ref() {
+                if *x == self.j + c { shift(c, &self.s) } else { t.clone() }
+            } else {
+                panic!()
+            }
         }
     }
+    map_var(&Subst{j, s: s.clone()}, t)
 }
 
 pub fn eval(t: &Rc<Term>) -> Rc<Term> {
@@ -72,6 +64,9 @@ pub fn eval(t: &Rc<Term>) -> Rc<Term> {
 }
 
 fn eval_once(t: &Rc<Term>) -> Option<Rc<Term>> {
+    // The implementation here pay special attention to free variables.
+    // A free variable is not a value, but it is in normal form. Any attempt to evaluate an
+    // application with variables will cause infinite recursion in this function.
     if let Term::App(t1, t2) = t.as_ref() {
         match t1.as_ref() {
             Term::Abs(t12) =>

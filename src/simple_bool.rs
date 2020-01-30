@@ -6,7 +6,7 @@ pub enum Type {
     Arr(Rc<Type>, Rc<Type>)
 }
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Debug)]
 pub enum Term {
     True,
     False,
@@ -32,9 +32,7 @@ pub fn type_of(t: &Rc<Term>, ctx: &Vec<Type>) -> Type {
             type_true
         }
         Term::Abs(type_t1, t2) => {
-            let mut new_ctx = (*ctx).clone();
-            new_ctx.insert(0, type_t1.clone());
-            let type_t2 = type_of(t2, &new_ctx);
+            let type_t2 = type_of(t2, &cons(type_t1.clone(), ctx));
             Type::Arr(rc(type_t1.clone()), rc(type_t2))
         }
         Term::App(t1, t2) => {
