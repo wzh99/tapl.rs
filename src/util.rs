@@ -1,10 +1,8 @@
 pub use std::rc::Rc;
 
-/// Shortcut for Rc::new
+/// Abbreviation for Rc::new
 #[inline]
-pub fn rc<T>(term: T) -> Rc<T> {
-    Rc::new(term)
-}
+pub fn rc<T>(term: T) -> Rc<T> { Rc::new(term) }
 
 /// Put an element to the front of a list.
 #[inline]
@@ -14,11 +12,22 @@ pub fn cons<T>(elem: T, v: &Vec<T>) -> Vec<T> where T: Clone {
     new_vec
 }
 
-/// Possibly map elements in a `Vec` to another. Return None if none of the elements are
-/// actually mapped
+/// Try to map all elements in a `Vec` to another, possibly of different types.
+/// Return `Err` if some error occurred during mapping.
 #[inline]
-pub fn map_any<T, F>(v: &Vec<T>, mut f: F) -> Option<Vec<T>> where
-    T: Clone, F: FnMut(&T) -> Option<T> {
+pub fn try_map<T, R, F, E>(v: &Vec<T>, f: F) -> Result<Vec<R>, E> where
+    F: Fn(&T) -> Result<R, E> {
+    let mut res = Vec::new();
+    res.reserve(v.len());
+    for x in v { res.push(f(x)?) }
+    Ok(res)
+}
+
+/// Possibly map elements in a `Vec` to another of the same type.
+/// Return `None` if none of the elements are actually mapped
+#[inline]
+pub fn map_any<T, F>(v: &Vec<T>, f: F) -> Option<Vec<T>> where
+    T: Clone, F: Fn(&T) -> Option<T> {
     let mut mapped = false;
     let new_map = v.iter()
         .map(|elem| {
