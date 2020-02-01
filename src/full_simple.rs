@@ -231,7 +231,7 @@ pub fn type_of(t: &Rc<Term>, ctx: &Vec<Rc<Type>>) -> TypeResult {
         // Unit
         Term::Unit => Ok(rc(Type::Unit)),
         // Boolean
-        Term::True | Term::False => Ok(rc(Type::Nat)),
+        Term::True | Term::False => Ok(rc(Type::Bool)),
         // Natural Number
         Term::Zero => Ok(rc(Type::Nat)),
         Term::IsZero(t1) => if let Type::Nat = *type_of(t1, ctx)? {
@@ -315,4 +315,112 @@ pub fn type_of(t: &Rc<Term>, ctx: &Vec<Rc<Type>>) -> TypeResult {
 
 #[test]
 fn test() {
+    fn gen_nat(x: usize) -> Rc<Term> {
+        fn gen_rec(t: Rc<Term>, y: usize) -> Rc<Term> {
+            if y == 0 { return t } else { gen_rec(rc(Term::Succ(t)), y - 1) }
+        }
+        gen_rec(rc(Term::Zero), x)
+    }
+
+    let test_cases = vec![
+        /// Case 0
+        /// {number=0, truth=is_zero(succ(0))}.truth
+        /// Type: Bool
+        /// Result: false
+        rc(Term::Proj(
+            rc(Term::Record(vec![ // {
+                ("number".to_string(), rc(Term::Zero)), // number=0
+                ("truth".to_string(), rc(Term::IsZero( // truth=is_zero(
+                    rc(Term::Succ( // succ(
+                        rc(Term::Zero) // 0
+                    )) // )
+                ))) // )
+            ])), // }
+            "truth".to_string() // .truth
+        )),
+
+        /// Case 1
+        /// case <number=0> as <truth: Bool, number: Nat> {
+        ///     <truth=x> => x,
+        ///     <number=y> => is_zero(y)
+        /// }
+        /// Type: Bool
+        /// Result: true
+        rc(Term::Case( // case
+            rc(Term::Tag( // <
+                "number".to_string(), // number=
+                rc(Term::Zero), // 0>
+                rc(Type::Variant(vec![ // <
+                    ("truth".to_string(), rc(Type::Bool)), // truth: Bool
+                    ("number".to_string(), rc(Type::Nat)) // number: Nat
+                ])) // >
+            )), // {
+            vec![
+                ("truth".to_string(), rc(Term::Var(0))), // <truth=x> => x
+                ("number".to_string(), rc(Term::IsZero( // <number=y> => is_zero(
+                    rc(Term::Var(0)) // y
+                ))) // )
+            ]
+        )), // }
+
+        /// Case 2
+        /// let is_even = fix lambda ie: Nat -> Bool.
+        ///     lambda x: Nat.
+        ///         if is_zero(x)
+        ///         then true
+        ///         else if is_zero(pred(x))
+        ///         then false
+        ///         else ie(pred(pred(x)));
+        /// is_even(3)
+        /// Type: Bool
+        /// Result: false
+        rc(Term::Let( // let is_even =
+            rc(Term::Fix( // fix
+                rc(Term::Abs( // lambda ie:
+                    rc(Type::Arr(
+                        rc(Type::Nat), // Nat ->
+                        rc(Type::Bool) // Bool
+                    )),
+                    rc(Term::Abs( // lambda x:
+                        rc(Type::Nat), // Nat
+                        rc(Term::If( // if
+                            rc(Term::IsZero( // is_zero(
+                                rc(Term::Var(0)) // x
+                            )), // )
+                            rc(Term::True), // then true
+                            rc(Term::If( // else if
+                                rc(Term::IsZero( // is_zero(
+                                    rc(Term::Pred( // pred(
+                                        rc(Term::Var(0)) // x
+                                    )) // )
+                                )), // )
+                                rc(Term::False), // then false
+                                rc(Term::App( // else
+                                    rc(Term::Var(1)), // ie(
+                                    rc(Term::Pred( // pred(
+                                        rc(Term::Pred( // pred(
+                                            rc(Term::Var(0)) // x
+                                        )) // )
+                                    )) // )
+                                )) // )
+                            )) // end if
+                        )) // end if
+                    )) // end lambda
+                ))// end lambda
+            )), // end fix
+            rc(Term::App(
+                rc(Term::Var(0)), // is_even(
+                gen_nat(3) // 3 // or succ(succ(succ(0)))
+            ))
+        ))
+    ];
+
+    for i in 0..test_cases.len() {
+        let term = &test_cases[i];
+        print!("{}\t", i);
+        match type_of(term, &vec![]) {
+            Ok(ty) => println!("{:?}: {:?}", eval(term), ty),
+            Err(msg) => println!("{}", msg)
+        }
+    }
 }
