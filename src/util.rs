@@ -15,10 +15,9 @@ pub fn cons<T>(elem: T, v: &Vec<T>) -> Vec<T> where T: Clone {
 /// Try to map all elements in a `Vec` to another, possibly of different types.
 /// Return `Err` if some error occurred during mapping.
 #[inline]
-pub fn try_map<T, R, F, E>(v: &Vec<T>, f: F) -> Result<Vec<R>, E> where
+pub fn try_map<T, R, E, F>(v: &Vec<T>, f: F) -> Result<Vec<R>, E> where
     F: Fn(&T) -> Result<R, E> {
-    let mut res = Vec::new();
-    res.reserve(v.len());
+    let mut res = Vec::with_capacity(v.len());
     for x in v { res.push(f(x)?) }
     Ok(res)
 }
