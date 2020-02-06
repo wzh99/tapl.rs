@@ -204,7 +204,7 @@ fn eval_once(t: &Rc<Term>) -> Option<Rc<Term>> {
     }
 }
 
-type TypeResult = Result<Rc<Type>, String>;
+pub type TypeResult = Result<Rc<Type>, String>;
 
 macro_rules! err {
     () => { Err(String::from("")) };

@@ -38,9 +38,16 @@
     $$
     
 * T-App
-  $$
-  \tt\frac{\Gamma,t_1\vdash T_{11}\!\to\!T_{12}\quad\Gamma\vdash t_2:T_{11}}{\Gamma\vdash t_1\,t_2:T_{12}}
-  $$
+    $$
+    \tt\frac{\Gamma,t_1\vdash T_{11}\!\to\!T_{12}\quad\Gamma\vdash t_2:T_{11}}{\Gamma\vdash t_1\,t_2:T_{12}}
+    $$
+
+### Subtyping
+
+* S-Arrow
+    $$
+    \tt\frac{T_1<:S_1\quad S_2<:T_2}{S_1\!\to\!S_2<:T_1\!\to\!T_2}
+    $$
 
 ## Unit
 
@@ -176,10 +183,15 @@ $$
 
 * S-RcdPerm
     $$
-    \tt\frac{\{k_j\!:\!S_j^{j\in1..n}\}\textrm{ is a permutation of }\{l_i\!:\!T_i^{i\in1..n}\}}{\{k_j\!:\!S_j^{j\in1..n}\}<:\{l_i\!:\!T_i^{i\in1..n}\}}
+    \tt\frac{\{k_j\!:\!S_j^{j\in1..n}\}\textrm{ perm. of }\{l_i\!:\!T_i^{i\in1..n}\}}{\{k_j\!:\!S_j^{j\in1..n}\}<:\{l_i\!:\!T_i^{i\in1..n}\}}
     $$
+    
+* S-Rcd
+  $$
+  \tt\frac{\{l_i^{i\in1..n}\}\subseteq\{k_j^{j\in1..m}\}\quad k_j=l_i\implies S_j<:T_i}{\{k_j\!:\!S_j^{j\in1..m}\}<:\{l_i\!:\!T_i^{i\in1..m}\}}
+  $$
 
-## Variant
+##  Variant
 
 ### Evaluation
 
@@ -255,11 +267,6 @@ $$
 * S-Top
     $$
     \tt S<:Top
-    $$
-
-* S-Arrow
-    $$
-    \tt\frac{T_1<:S_1\quad S_2<:T_2}{S_1\!\to\!S_2<:T_1\!\to\!T_2}
     $$
 
 ### Typing

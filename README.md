@@ -10,6 +10,7 @@ This project contains implementation of languages introduced in [Types and Progr
 * [Chapter 7: Untyped Lambda Calculus](src/untyped.rs)
 * [Chapter 10: Simple Types](src/simple_bool.rs)
 * [Chapter 11: Simple Extensions](src/full_simple.rs)
+* [Chapter 17: Subtyping](src/rcd_sub.rs)
 
 To be added...
 
