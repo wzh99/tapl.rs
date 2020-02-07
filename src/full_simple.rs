@@ -23,7 +23,7 @@ pub enum Term {
     // Boolean
     True,
     False,
-    // Natural Number
+    // Numeric
     Zero,
     IsZero(Rc<Term>),
     Pred(Rc<Term>),
@@ -76,27 +76,34 @@ fn map_var<F>(f: &F, t: &Rc<Term>) -> Rc<Term> where
 fn walk<F>(f: &F, t: &Rc<Term>, c: isize) -> Rc<Term> where
     F: Fn(&Rc<Term>, isize) -> Rc<Term> {
     match t.deref() {
+        // Lambda Calculus
         Term::Var(_) => f(t, c),
-        Term::Abs(param_type, t1) =>
-            rc(Term::Abs(param_type.clone(), walk(f, t1, c + 1))),
-        Term::App(t1, t2) =>
-            rc(Term::App(walk(f, t1, c), walk(f, t2, c))),
+        Term::Abs(param_type, t1) => rc(Term::Abs(param_type.clone(), walk(f, t1, c + 1))),
+        Term::App(t1, t2) => rc(Term::App(walk(f, t1, c), walk(f, t2, c))),
+
+        // Numeric
         Term::IsZero(t1) => rc(Term::IsZero(walk(f, t1, c))),
         Term::Pred(t1) => rc(Term::Pred(walk(f, t1, c))),
         Term::Succ(t1) => rc(Term::Succ(walk(f, t1, c))),
+
+        // Conditional
         Term::If(t1, t2, t3) =>
             rc(Term::If(walk(f, t1, c), walk(f, t2, c), walk(f, t3, c))),
-        Term::Ascribe(t1, type_t1) =>
-            rc(Term::Ascribe(walk(f, t1, c), type_t1.clone())),
-        Term::Let(t1, t2) =>
-            rc(Term::Let(walk(f, t1, c), walk(f, t2, c + 1))),
-        Term::Record(fields) =>
-            rc(Term::Record(fields.iter()
-                .map(|(l, ti)| (l.clone(), walk(f, ti, c)))
-                .collect()
-            )),
+
+        // Ascription
+        Term::Ascribe(t1, type_t1) => rc(Term::Ascribe(walk(f, t1, c), type_t1.clone())),
+
+        // Let Binding
+        Term::Let(t1, t2) => rc(Term::Let(walk(f, t1, c), walk(f, t2, c + 1))),
+
+        // Record
+        Term::Record(fields) => rc(Term::Record(fields.iter()
+            .map(|(l, ti)| (l.clone(), walk(f, ti, c))).collect()
+        )),
         Term::Proj(t1, l) =>
             rc(Term::Proj(walk(f, t1, c), l.clone())),
+
+        // Variant
         Term::Tag(l, t1, type_tag) =>
             rc(Term::Tag(l.clone(), walk(f, t1, c), type_tag.clone())),
         Term::Case(t1, cases) =>
@@ -104,7 +111,10 @@ fn walk<F>(f: &F, t: &Rc<Term>, c: isize) -> Rc<Term> where
                 .map(|(l, ti)| (l.clone(), walk(f, ti, c + 1)))
                 .collect()
             )),
+
+        // General Recursion
         Term::Fix(t1) => rc(Term::Fix(walk(f, t1, c))),
+
         _ => t.clone()
     }
 }
@@ -143,63 +153,96 @@ pub fn eval(t: &Rc<Term>) -> Rc<Term> {
 fn eval_once(t: &Rc<Term>) -> Option<Rc<Term>> {
     match t.deref() {
         // Lambda calculus
+        // E-AppAbs
         Term::App(v1, v2) if v1.is_val() && v2.is_val() =>
             if let Term::Abs(_, expr) = v1.deref() {
                 Some(subst_top(v2, expr))
             } else { None }
+        // E-App2
         Term::App(v1, t2) if v1.is_val() =>
             Some(rc(Term::App(v1.clone(), eval_once(t2)?))),
+        // E-App1
         Term::App(t1, t2) => Some(rc(Term::App(eval_once(t1)?, t2.clone()))),
-        // Natural Number
+
+        // Numeric
+        // E-Succ
         Term::Succ(t1) => Some(rc(Term::Succ(eval_once(t1)?))),
         Term::Pred(t1) => match t1.deref() {
+            // E-PredZero
             Term::Zero => Some(t1.clone()),
+            // E-PredSucc
             Term::Succ(nv) if nv.is_numeric() => Some(nv.clone()),
+            // E-Pred
             _ => Some(rc(Term::Pred(eval_once(t1)?)))
         }
         Term::IsZero(t1) => match t1.deref() {
+            // E-IsZeroZero
             Term::Zero => Some(rc(Term::True)),
+            // E-IsZeroSucc
             Term::Succ(nv) if nv.is_numeric() => Some(rc(Term::False)),
+            // E-IsZero
             _ => Some(rc(Term::IsZero(eval_once(t1)?)))
         }
+
         // Conditional
         Term::If(t1, t2, t3) => match t1.deref() {
+            // E-IfTrue
             Term::True => Some(t2.clone()),
+            // E-IfFalse
             Term::False => Some(t3.clone()),
+            // E-If
             _ => Some(rc(Term::If(eval_once(t1)?, t2.clone(), t3.clone())))
         }
+
         // Ascription
+        // E-Ascribe
         Term::Ascribe(v1, _) if v1.is_val() => Some(v1.clone()),
+        // E-Ascribe1
         Term::Ascribe(t1, type_t1) =>
             Some(rc(Term::Ascribe(eval_once(t1)?, type_t1.clone()))),
+
         // Let Binding
+        // E-LetV
         Term::Let(v1, t2) if v1.is_val() => Some(subst_top(v1, t2)),
+        // E-Let
         Term::Let(t1, t2) => Some(rc(Term::Let(eval_once(t1)?, t2.clone()))),
+
         // Record
+        // E-Rcd
         Term::Record(fields) => Some(rc(Term::Record(
             map_any(fields, |(l, t)| {
                 if !t.is_val() { Some((l.clone(), eval_once(t)?)) } else { None }
             })?
         ))),
+        // E-ProjRcd
         Term::Proj(v1, l) if v1.is_val() =>
             if let Term::Record(fields) = v1.deref() {
                 assoc(fields, l).map(|ti| ti.clone())
             } else { None }
+        // E-Proj
         Term::Proj(t1, l) => Some(rc(Term::Proj(eval_once(t1)?, l.clone()))),
+
         // Variant
+        // E-Variant
         Term::Tag(l, t1, type_t) =>
             Some(rc(Term::Tag(l.clone(), eval_once(t1)?, type_t.clone()))),
+        // E-CaseVariant
         Term::Case(v1, cases) if v1.is_val() =>
             if let Term::Tag(l, v11, _) = v1.deref() {
                 assoc(cases, l).map(|ti| subst_top(v11, ti))
             } else { None }
+        // E-Case
         Term::Case(t1, cases) => Some(rc(Term::Case(eval_once(t1)?, cases.clone()))),
+
         // General Recursion
+        // E-FixBeta
         Term::Fix(v1) if v1.is_val() =>
             if let Term::Abs(_, t12) = v1.deref() {
                 Some(subst_top(t, t12))
             } else { None }
+        // E-Fix
         Term::Fix(t1) => Some(rc(Term::Fix(eval_once(t1)?))),
+
         _ => None
     }
 }
@@ -214,38 +257,54 @@ macro_rules! err {
 pub fn type_of(t: &Rc<Term>, ctx: &Vec<Rc<Type>>) -> TypeResult {
     match t.deref() {
         // Lambda Calculus
+        // T-Var
         Term::Var(i) => match ctx.get(*i as usize) {
             Some(tp) => Ok(tp.clone()),
             None => err!("cannot find type of variable in current context")
         }
+        // T-Abs
         Term::Abs(type_param, expr) => {
             let type_t1 = type_of(expr, &cons(type_param.clone(), ctx))?;
             Ok(rc(Type::Arr(type_param.clone(), type_t1)))
         }
+        // T-App
         Term::App(abs, arg) =>
             if let Type::Arr(type_param, type_ret) = &*type_of(abs, ctx)? {
                 if type_param == &type_of(arg, ctx)? {
                     Ok(type_ret.clone())
                 } else { err!("parameter type mismatch") }
             } else { err!("not an arrow type") }
+
         // Unit
+        // T-Unit
         Term::Unit => Ok(rc(Type::Unit)),
+
         // Boolean
+        // T-True, T-False
         Term::True | Term::False => Ok(rc(Type::Bool)),
-        // Natural Number
+
+        // Numeric
+        // T-Zero
         Term::Zero => Ok(rc(Type::Nat)),
+        // T-IsZero
         Term::IsZero(t1) => if let Type::Nat = *type_of(t1, ctx)? {
             Ok(rc(Type::Bool))
         } else { err!("argument of is_zero is not a number") }
+        // T-Pred
         Term::Pred(t1) => if let Type::Nat = *type_of(t1, ctx)? {
             Ok(rc(Type::Nat))
         } else { err!("argument of pred is not a number") }
+        // T-Succ
         Term::Succ(t1) => if let Type::Nat = *type_of(t1, ctx)? {
             Ok(rc(Type::Nat))
         } else { err!("argument of succ is not a number") }
+
         // String
+        // T-String
         Term::String(_) => Ok(rc(Type::String)),
+
         // Conditional
+        // T-If
         Term::If(guard, true_arm, false_arm) => {
             if let Type::Bool = *type_of(guard, ctx)? {
                 let type_true = type_of(true_arm, ctx)?;
@@ -254,24 +313,31 @@ pub fn type_of(t: &Rc<Term>, ctx: &Vec<Rc<Type>>) -> TypeResult {
                 } else { err!("arms of conditional have different types") }
             } else { err!("guard of conditional is not a boolean") }
         }
+
         // Ascription
+        // T-Ascribe
         Term::Ascribe(t1, type_as) =>
             if &type_of(t1, ctx)? == type_as {
                 Ok(type_as.clone())
             } else { err!("body of as term does not have the expected type") }
+
         // Let Binding
+        // T-Let
         Term::Let(t1, t2) => {
             let type_t1 = type_of(t1, ctx)?;
             let new_ctx = cons(type_t1, ctx);
             type_of(t2, &new_ctx)
         },
+
         // Record
+        // T-Rcd
         Term::Record(fields) => {
             let type_field = try_map(fields, |(l, ti)| {
                 type_of(ti, ctx).map(|ty| (l.clone(), ty))
             })?;
             Ok(rc(Type::Record(type_field)))
         }
+        // T-Proj
         Term::Proj(t1, l) =>
             if let Type::Record(fields) = &*type_of(t1, ctx)? {
                 match assoc(&fields, l) {
@@ -279,7 +345,9 @@ pub fn type_of(t: &Rc<Term>, ctx: &Vec<Rc<Type>>) -> TypeResult {
                     None => err!(format!("label {} not found", l))
                 }
             } else { err!("expect record type") }
+
         // Variant
+        // T-Variant
         Term::Tag(l, t1, type_tag) =>
             if let Type::Variant(fields) = type_tag.deref() {
                 let type_expect = assoc(fields, l)
@@ -289,6 +357,7 @@ pub fn type_of(t: &Rc<Term>, ctx: &Vec<Rc<Type>>) -> TypeResult {
                     Ok(type_tag.clone())
                 } else { err!("field does not have expected type") }
             } else { err!("annotation is not variant type") }
+        // T-Case
         Term::Case(t1, cases) =>
             if let Type::Variant(type_cases) = &*type_of(t1, ctx)? {
                 let type_cases = try_map(cases, |(l, ti)| {
@@ -303,7 +372,9 @@ pub fn type_of(t: &Rc<Term>, ctx: &Vec<Rc<Type>>) -> TypeResult {
                     Ok(type_head.clone())
                 } else { err!("cases do not have the same type") }
             } else { err!("expect variant type") }
+
         // General Recursion
+        // T-Fix
         Term::Fix(t1) =>
             if let Type::Arr(type_param, type_res) = &*type_of(t1, ctx)? {
                 if type_param == type_res {

@@ -49,6 +49,103 @@
     \tt\frac{T_1<:S_1\quad S_2<:T_2}{S_1\!\to\!S_2<:T_1\!\to\!T_2}
     $$
 
+## Conditional
+
+### Evaluation
+
+* E-IfTrue
+    $$
+    \tt if\;true\;then\;t_2\;else\;t_3\longrightarrow t_2
+    $$
+
+* E-IfFalse
+    $$
+    \tt if\;false\;then\;t_2\;else\;t_3\longrightarrow t_3
+    $$
+
+* E-If
+    $$
+    \tt\frac{t_1\longrightarrow t'_1}{if\;t_1\;then\;t_2\;else\;t_3\longrightarrow if\;t'_1\;then\;t_2\;else\;t_3}
+    $$
+    
+### Typing
+
+* T-True
+    $$
+    \tt\Gamma\vdash true:Bool
+    $$
+
+* T-False
+    $$
+    \tt\Gamma\vdash false:Bool
+    $$
+
+* T-If
+    $$
+    \tt\frac{\Gamma\vdash t_1:Bool\quad\Gamma\vdash t_2:T\quad\Gamma\vdash t_3:T}{\Gamma\vdash if\;t_1\;then\;t_2\;else\;t_3:T}
+    $$
+
+* TA-If
+    $$
+    \tt\frac{\Gamma\vdash t_1:Bool\quad\Gamma\vdash t_2:T_2\quad\Gamma\vdash t_3:T_3\quad T_2\or T_3=T}{\Gamma\vdash if\;t_1\;then\;t_2\;else\;t_3:T}
+    $$
+
+## Numeric
+
+### Evaluation
+
+* E-Succ
+    $$
+    \tt\frac{t_1\longrightarrow t'_1}{succ\;t_1\longrightarrow succ\;t'_1}
+    $$
+
+* E-PredZero
+    $$
+    \tt pred\;0\longrightarrow0
+    $$
+
+* E-PredSucc
+    $$
+    \tt pred\;(succ\;nv_1)\longrightarrow nv_1
+    $$
+
+* E-Pred
+    $$
+    \tt\frac{t_1\longrightarrow t'_1}{pred\;t_1\longrightarrow pred\;t'_1}
+    $$
+
+* E-IsZeroZero
+    $$
+    \tt iszero\;0\longrightarrow true
+    $$
+
+* E-IsZeroSucc
+    $$
+    \tt iszero\;(succ\;nv_1)\longrightarrow false
+    $$
+
+* E-IsZero
+    $$
+    \tt\frac{t_1\longrightarrow t'_1}{iszero\;t_1\longrightarrow iszero\;t'_1}
+    $$
+
+### Typing
+
+* T-Succ
+    $$
+    \tt\frac{\Gamma\vdash t_1:Nat}{\Gamma\vdash succ\;t_1:Nat}
+    $$
+
+* T-Pred
+    $$
+    \tt\frac{\Gamma\vdash t_1:Nat}{\Gamma\vdash pred\;t_1:Nat}
+    $$
+
+* T-IsZero
+    $$
+    \tt\frac{\Gamma\vdash t_1:Nat}{\Gamma\vdash iszero\;t_1:Bool}
+    $$
+
 ## Unit
 
 ### Typing
